@@ -1,0 +1,4 @@
+# Example grammar in BNF notation
+# This grammar generates strings of the form a^n b^n, where n >= 1
+
+S -> aSb | ab

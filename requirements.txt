@@ -1,0 +1,17 @@
+# Core dependencies
+#python>=3.8,<4.0
+numpy>=1.20.0
+networkx>=2.6.3  # For graph representations of automata
+matplotlib>=3.4.0  # For visualizations
+
+# CLI dependencies
+click>=8.0.0  # Command line interface toolkit
+rich>=10.0.0  # Rich text and formatting in the terminal
+
+# GUI dependencies (optional)
+PyQt5>=5.15.0  # For GUI interface
+
+# Development dependencies
+pytest>=6.0.0  # Testing framework
+pylint>=2.8.0  # Linting
+black>=21.5b2  # Code formatting
