@@ -38,12 +38,12 @@ def run_grammar_test(title, non_terminals, terminals, productions, start_symbol)
     # except NotImplementedError:
     #     print("eliminate_unit_productions: NotImplementedError raised as expected.")
 
-    try:
-        grammar_no_units = grammar.simplify()
-        print("\nGrammar after all simplifications:")
-        print(grammar_no_units)
-    except NotImplementedError:
-        print("simplify: NotImplementedError raised as expected.")
+    # try:
+    #     grammar_no_units = grammar.simplify()
+    #     print("\nGrammar after all simplifications:")
+    #     print(grammar_no_units)
+    # except NotImplementedError:
+    #     print("simplify: NotImplementedError raised as expected.")
 
     try:
         cnf_grammar = grammar.to_cnf()

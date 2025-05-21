@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 from flat.grammar import (
-    Grammar, GrammarType, identify_grammar_type,
+    Grammar,
     simplify_grammar, convert_to_cnf, convert_to_gnf
 )
 from flat.automata import NFA, DFA, nfa_to_dfa
@@ -92,7 +92,7 @@ def main():
         
         # Execute command
         if args.command == "type":
-            grammar_type = identify_grammar_type(grammar)
+            grammar_type = grammar.identify_type()
             print(f"Grammar type: {grammar_type.name}")
             print(f"Type {grammar_type.value} in the Chomsky hierarchy")
             
