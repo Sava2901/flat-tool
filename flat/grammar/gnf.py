@@ -3,6 +3,24 @@ from .grammar import Grammar
 import itertools
 from collections import deque
 
+def _tokenise(text, terminals, non_terminals):
+    out = []
+    i = 0
+    sorted_non_terminals = sorted(non_terminals, key=len, reverse=True)
+    while i < len(text):
+        matched = False
+        for nt in sorted_non_terminals:
+            if text.startswith(nt, i):
+                out.append(nt)
+                i += len(nt)
+                matched = True
+                break
+        if not matched:
+            if text[i] in terminals:
+                out.append(text[i])
+            i += 1
+    return out
+
 def convert_to_gnf(cnf_grammar):
     """
     Converts the given grammar (assumed to be in CNF) to Greibach Normal Form (GNF).
@@ -104,49 +122,87 @@ def convert_to_gnf(cnf_grammar):
                 if rhs == 'ε':
                     new_productions[nt].append('ε')
                     continue
-                if rhs[0] in terms:
+                
+                tokens = _tokenise(rhs, terms, all_nts)
+                if not tokens:
+                    new_productions[nt].append('ε')
+                    continue
+                
+                if tokens[0] in terms:
                     new_productions[nt].append(rhs)
                     continue
 
                 queue = deque()
-                queue.append(rhs)
+                queue.append(tokens)
                 seen = set()
                 while queue:
-                    current = queue.popleft()
-                    if not current or current[0] in terms:
-                        new_productions[nt].append(current or 'ε')
+                    current_tokens = queue.popleft()
+                    if not current_tokens:
+                        new_productions[nt].append('ε')
                         continue
-                    first_nt = current[0]
-                    rest = current[1:]
-                    if first_nt not in renamed_prods:
-                        terms.add(first_nt)
-                        new_productions[nt].append(current)
+                    
+                    first_token = current_tokens[0]
+                    rest_tokens = current_tokens[1:]
+                    
+                    if first_token in terms:
+                        new_productions[nt].append(''.join(current_tokens))
                         continue
-                    for subrule in renamed_prods[first_nt]:
-                        new_seq = subrule + rest if subrule != 'ε' else rest or 'ε'
+                        
+                    if first_token not in renamed_prods:
+                        continue
+                        
+                    for subrule in renamed_prods[first_token]:
+                        if subrule == 'ε':
+                            new_tokens = rest_tokens
+                        else:
+                            sub_tokens = _tokenise(subrule, terms, all_nts)
+                            new_tokens = sub_tokens + rest_tokens
+                            
+                        new_seq = ''.join(new_tokens)
                         if new_seq not in seen:
                             seen.add(new_seq)
-                            queue.append(new_seq)
+                            queue.append(new_tokens)
                     changed = True
         renamed_prods = new_productions
 
+    # Final cleanup to ensure GNF form
+    final_productions = {}
     for nt in renamed_prods:
         normalized = []
         for rhs in renamed_prods[nt]:
-            if rhs and rhs != 'ε' and rhs[0] not in terms:
-                terms.add(rhs[0])
-            normalized.append(rhs)
-        renamed_prods[nt] = normalized
+            if rhs == 'ε':
+                if nt == new_start:
+                    normalized.append(rhs)
+                continue
+                
+            tokens = _tokenise(rhs, terms, all_nts)
+            if not tokens:
+                if nt == new_start:
+                    normalized.append('ε')
+                continue
+                
+            if tokens[0] in terms:
+                normalized.append(rhs)
+            else:
+                # Replace leading nonterminal with its productions
+                for subrule in renamed_prods[tokens[0]]:
+                    if subrule == 'ε':
+                        new_rhs = ''.join(tokens[1:]) or 'ε'
+                    else:
+                        new_rhs = subrule + ''.join(tokens[1:])
+                    normalized.append(new_rhs)
+        if normalized:
+            final_productions[nt] = normalized
 
-    gnf_nonterms = {nt for nt in renamed_prods if renamed_prods[nt]}
+    gnf_nonterms = set(final_productions.keys())
     if new_start not in gnf_nonterms:
         gnf_nonterms.add(new_start)
-        renamed_prods[new_start] = ['ε']
+        final_productions[new_start] = ['ε']
 
     return Grammar(
         non_terminals=gnf_nonterms,
         terminals=terms,
-        productions=renamed_prods,
+        productions=final_productions,
         start_symbol=new_start
     )
 
