@@ -6,7 +6,6 @@ A grammar is in GNF if all productions are of the form:
 - S → ε (only if S is the start symbol)
 """
 
-from typing import Dict, List, Set, Tuple
 from copy import deepcopy
 
 from .grammar import Grammar

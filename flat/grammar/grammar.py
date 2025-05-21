@@ -4,8 +4,7 @@ This module provides the base Grammar class for representing and manipulating fo
 """
 
 from enum import Enum
-from typing import Dict, List, Set, Optional, Tuple, Union
-
+from typing import Dict, List, Set
 
 class GrammarType(Enum):
     """Enumeration of grammar types according to the Chomsky hierarchy."""
@@ -47,89 +46,103 @@ class Grammar:
         Raises:
             ValueError: If the grammar definition is invalid
         """
-        # Validate input
-        if not non_terminals:
-            raise ValueError("Non-terminals set cannot be empty")
-        if not terminals:
-            raise ValueError("Terminals set cannot be empty")
-        if not productions:
-            raise ValueError("Productions dictionary cannot be empty")
-        if start_symbol not in non_terminals:
-            raise ValueError(f"Start symbol '{start_symbol}' must be in non-terminals set")
+        # if not non_terminals:
+        #     raise ValueError("Non-terminals set cannot be empty")
+        # if not terminals:
+        #     raise ValueError("Terminals set cannot be empty")
+        # if not productions:
+        #     raise ValueError("Productions dictionary cannot be empty")
+        # if start_symbol not in non_terminals:
+        #     raise ValueError(f"Start symbol '{start_symbol}' must be in non-terminals set")
         
-        # Check that all production keys are non-terminals
         for nt in productions:
-            if nt not in non_terminals:
-                raise ValueError(f"Production key '{nt}' is not in non-terminals set")
+            for prod in productions[nt]:
+                if prod == "":
+                    raise ValueError(f"Empty string (\"\") is not allowed as a production for non-terminal '{nt}'. Use 'ε' for epsilon.")
         
         self.non_terminals = non_terminals
         self.terminals = terminals
         self.productions = productions
         self.start_symbol = start_symbol
-        
+
     def __str__(self) -> str:
-        """Return a string representation of the grammar in BNF notation."""
+        """Return a detailed string representation of the grammar."""
         result = []
+
+        result.append("Non-Terminals:")
+        result.append(f"  {{ {', '.join(sorted(self.non_terminals))} }}")
+
+        result.append("Terminals:")
+        result.append(f"  {{ {', '.join(sorted(self.terminals))} }}")
+
+        result.append("Productions:")
         for nt, prods in self.productions.items():
-            result.append(f"{nt} -> {' | '.join(prods)}")
+            formatted_prods = [' '.join(prod) if isinstance(prod, list) else prod for prod in prods]
+            result.append(f"  {nt} -> {' | '.join(formatted_prods)}")
+
+        result.append("Start Symbol:")
+        result.append(f"  {self.start_symbol}\n")
+
         return "\n".join(result)
-    
+
     def identify_type(self) -> GrammarType:
         """Identify the grammar type according to the Chomsky hierarchy.
         
         Returns:
             GrammarType: The identified grammar type
         """
-        # Check if it's a Type 3 grammar (Regular)
-        if self._is_regular():
+        if self.is_regular():
             return GrammarType.TYPE_3
         
-        # Check if it's a Type 2 grammar (Context-free)
-        if self._is_context_free():
+        if self.is_context_free():
             return GrammarType.TYPE_2
         
-        # Check if it's a Type 1 grammar (Context-sensitive)
-        if self._is_context_sensitive():
+        if self.is_context_sensitive():
             return GrammarType.TYPE_1
         
-        # If none of the above, it's a Type 0 grammar (Unrestricted)
         return GrammarType.TYPE_0
-    
-    def _is_regular(self) -> bool:
+
+    def is_regular(self) -> bool:
         """Check if the grammar is regular (Type 3).
-        
-        A grammar is regular if all productions are of the form:
+
+        A grammar is regular if all productions are:
+        - ε
         - A → a
-        - A → aB
-        - A → ε (epsilon)
-        
-        Where A, B are non-terminals and a is a terminal.
-        
+        - A → aB (right-linear) or A → Ba (left-linear), but not both in the same grammar
+
         Returns:
             bool: True if the grammar is regular, False otherwise
         """
+        direction = None  # 'left' or 'right'
+
         for nt, prods in self.productions.items():
             for prod in prods:
-                # Empty production (epsilon) is allowed
-                if not prod:
+                # Epsilon production
+                if prod == 'ε':
                     continue
-                
-                # Check if production is of the form A → a
+                # Non-terminal into terminal production
                 if len(prod) == 1 and prod in self.terminals:
                     continue
-                
-                # Check if production is of the form A → aB
-                if (len(prod) == 2 and 
-                    prod[0] in self.terminals and 
-                    prod[1] in self.non_terminals):
-                    continue
-                
-                # If we reach here, the production doesn't match any regular form
-                return False
-        
+                if len(prod) == 2:
+                    # Right-linear
+                    if prod[0] in self.terminals and prod[1] in self.non_terminals:
+                        if direction is None:
+                            direction = 'right'
+                        elif direction != 'right':
+                            return False
+                        continue
+                    # Left-linear
+                    elif prod[1] in self.terminals and prod[0] in self.non_terminals:
+                        if direction is None:
+                            direction = 'left'
+                        elif direction != 'left':
+                            return False
+                        continue
+                return False  # Invalid production
+
         return True
-    
-    def _is_context_free(self) -> bool:
+
+    def is_context_free(self) -> bool:
         """Check if the grammar is context-free (Type 2).
         
         A grammar is context-free if all productions are of the form:
@@ -147,7 +160,7 @@ class Grammar:
         
         return True
     
-    def _is_context_sensitive(self) -> bool:
+    def is_context_sensitive(self) -> bool:
         """Check if the grammar is context-sensitive (Type 1).
         
         A grammar is context-sensitive if all productions are of the form:
@@ -161,22 +174,35 @@ class Grammar:
         Returns:
             bool: True if the grammar is context-sensitive, False otherwise
         """
+
+        # Flag if epsilon production S -> ε is present
+        epsilon_production = False
+
+        # 1) Check epsilon productions and empty strings
         for nt, prods in self.productions.items():
-            for prod in prods:
-                # Special case: S → ε is allowed if S doesn't appear on the right side of any production
-                if nt == self.start_symbol and not prod:
-                    # Check if S appears on the right side of any production
-                    for right_prods in self.productions.values():
-                        for right_prod in right_prods:
-                            if self.start_symbol in right_prod:
-                                return False
-                    continue
-                
-                # For all other productions, the right side must not be shorter than the left side
-                if len(prod) < len(nt):
+            if "ε" in prods:
+                # Only allowed if nt is start_symbol
+                if nt != self.start_symbol:
                     return False
-        
+                epsilon_production = True
+
+        # 2) If epsilon production exists, check that start_symbol does NOT appear on any RHS
+        if epsilon_production:
+            for prods in self.productions.values():
+                for prod in prods:
+                    if self.start_symbol in prod:
+                        return False
+
+        # 3) Check non-contracting: |RHS| >= |LHS| for all productions except S → ε handled above
+        for lhs, prods in self.productions.items():
+            for rhs in prods:
+                if rhs == "ε":
+                    continue  # skip S → ε handled above
+                if len(rhs) < len(lhs):
+                    return False
+
         return True
+
     
     def has_epsilon_productions(self) -> bool:
         """Check if the grammar has epsilon (empty) productions.
@@ -185,7 +211,7 @@ class Grammar:
             bool: True if the grammar has epsilon productions, False otherwise
         """
         for prods in self.productions.values():
-            if '' in prods or 'ε' in prods:
+            if 'ε' in prods:
                 return True
         return False
     
@@ -209,8 +235,8 @@ class Grammar:
         Returns:
             Grammar: A new grammar without epsilon productions
         """
-        # TODO: Implement epsilon production elimination algorithm
-        raise NotImplementedError("Epsilon production elimination not implemented yet")
+        from .simplification import eliminate_epsilon_productions
+        return eliminate_epsilon_productions(self)
     
     def eliminate_unit_productions(self) -> 'Grammar':
         """Eliminate unit productions from the grammar.
@@ -218,8 +244,8 @@ class Grammar:
         Returns:
             Grammar: A new grammar without unit productions
         """
-        # TODO: Implement unit production elimination algorithm
-        raise NotImplementedError("Unit production elimination not implemented yet")
+        from .simplification import eliminate_unit_productions
+        return eliminate_unit_productions(self)
     
     def remove_unreachable_symbols(self) -> 'Grammar':
         """Remove unreachable symbols from the grammar.
@@ -227,8 +253,8 @@ class Grammar:
         Returns:
             Grammar: A new grammar without unreachable symbols
         """
-        # TODO: Implement unreachable symbol removal algorithm
-        raise NotImplementedError("Unreachable symbol removal not implemented yet")
+        from .simplification import remove_unreachable_symbols
+        return remove_unreachable_symbols(self)
     
     def remove_non_generating_symbols(self) -> 'Grammar':
         """Remove non-generating symbols from the grammar.
@@ -236,8 +262,8 @@ class Grammar:
         Returns:
             Grammar: A new grammar without non-generating symbols
         """
-        # TODO: Implement non-generating symbol removal algorithm
-        raise NotImplementedError("Non-generating symbol removal not implemented yet")
+        from .simplification import remove_non_generating_symbols
+        return remove_non_generating_symbols(self)
     
     def simplify(self) -> 'Grammar':
         """Simplify the grammar by removing unreachable and non-generating symbols.
@@ -245,10 +271,8 @@ class Grammar:
         Returns:
             Grammar: A simplified grammar
         """
-        # First remove non-generating symbols
-        grammar = self.remove_non_generating_symbols()
-        # Then remove unreachable symbols
-        return grammar.remove_unreachable_symbols()
+        from .simplification import simplify_grammar
+        return simplify_grammar(self)
     
     def to_cnf(self) -> 'Grammar':
         """Convert the grammar to Chomsky Normal Form (CNF).
@@ -263,8 +287,8 @@ class Grammar:
         Returns:
             Grammar: A new grammar in Chomsky Normal Form
         """
-        # TODO: Implement CNF conversion algorithm
-        raise NotImplementedError("CNF conversion not implemented yet")
+        from .cnf import convert_to_cnf
+        return convert_to_cnf(self)
     
     def to_gnf(self) -> 'Grammar':
         """Convert the grammar to Greibach Normal Form (GNF).
@@ -277,5 +301,5 @@ class Grammar:
         Returns:
             Grammar: A new grammar in Greibach Normal Form
         """
-        # TODO: Implement GNF conversion algorithm
-        raise NotImplementedError("GNF conversion not implemented yet")
+        from .gnf import convert_to_gnf
+        return convert_to_gnf(self)
