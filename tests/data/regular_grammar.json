@@ -1,9 +1,0 @@
-{
-  "non_terminals": ["S", "A"],
-  "terminals": ["a", "b"],
-  "productions": {
-    "S": ["aA", "b"],
-    "A": ["a", ""]
-  },
-  "start_symbol": "S"
-}
