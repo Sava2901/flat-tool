@@ -33,7 +33,7 @@ class Grammar:
     def __init__(self, 
                  non_terminals: Set[str], 
                  terminals: Set[str], 
-                 productions: Dict[str, List[str]], 
+                 productions: Dict[str, List[str]],
                  start_symbol: str):
         """Initialize a Grammar instance.
         
@@ -62,6 +62,7 @@ class Grammar:
         
         self.non_terminals = non_terminals
         self.terminals = terminals
+        self.terminals.add("ε")
         self.productions = productions
         self.start_symbol = start_symbol
 

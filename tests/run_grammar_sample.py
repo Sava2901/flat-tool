@@ -15,28 +15,28 @@ def run_grammar_test(title, non_terminals, terminals, productions, start_symbol)
     print("\nOriginal Grammar:")
     print(grammar)
 
-    print("\nType identification:")
-    print("Grammar type:", grammar.identify_type())
-    print("Is regular:", grammar.is_regular())
-    print("Is context-free:", grammar.is_context_free())
-    print("Is context-sensitive:", grammar.is_context_sensitive())
+    # print("\nType identification:")
+    # print("Grammar type:", grammar.identify_type())
+    # print("Is regular:", grammar.is_regular())
+    # print("Is context-free:", grammar.is_context_free())
+    # print("Is context-sensitive:", grammar.is_context_sensitive())
+    #
+    # print("\nEpsilon productions present:", grammar.has_epsilon_productions())
+    # print("Unit productions present:", grammar.has_unit_productions())
 
-    print("\nEpsilon productions present:", grammar.has_epsilon_productions())
-    print("Unit productions present:", grammar.has_unit_productions())
-
-    try:
-        grammar_no_epsilon = grammar.eliminate_epsilon_productions()
-        print("\nGrammar after eliminating ε-productions:")
-        print(grammar_no_epsilon)
-    except NotImplementedError:
-        print("eliminate_epsilon_productions: NotImplementedError raised as expected.")
-
-    try:
-        grammar_no_units = grammar.eliminate_unit_productions()
-        print("\nGrammar after eliminating unit productions:")
-        print(grammar_no_units)
-    except NotImplementedError:
-        print("eliminate_unit_productions: NotImplementedError raised as expected.")
+    # try:
+    #     grammar_no_epsilon = grammar.eliminate_epsilon_productions()
+    #     print("\nGrammar after eliminating ε-productions:")
+    #     print(grammar_no_epsilon)
+    # except NotImplementedError:
+    #     print("eliminate_epsilon_productions: NotImplementedError raised as expected.")
+    #
+    # try:
+    #     grammar_no_units = grammar.eliminate_unit_productions()
+    #     print("\nGrammar after eliminating unit productions:")
+    #     print(grammar_no_units)
+    # except NotImplementedError:
+    #     print("eliminate_unit_productions: NotImplementedError raised as expected.")
 
     try:
         grammar_no_units = grammar.simplify()
@@ -45,6 +45,19 @@ def run_grammar_test(title, non_terminals, terminals, productions, start_symbol)
     except NotImplementedError:
         print("simplify: NotImplementedError raised as expected.")
 
+    try:
+        cnf_grammar = grammar.to_cnf()
+        print("\nCNF Grammar:")
+        print(cnf_grammar)
+    except NotImplementedError:
+        print("cnf: Not good man, not good.")
+
+    # try:
+    #     gnf_grammar = grammar.to_gnf()
+    #     print("\nGNF Grammar:")
+    #     print(gnf_grammar)
+    # except NotImplementedError:
+    #     print("gnf: Not good man, not good.")
 
 def main():
     # Grammar 1: Contains ε and unit productions
@@ -153,7 +166,7 @@ def main():
     run_grammar_test(
         "Grammar 9: Only unit and epsilon",
         non_terminals={"S", "A", "B", "C"},
-        terminals={"ε"},
+        terminals={"ε", "a", "b", "c"},
         productions={
             "S": ["B", "Ca"],
             "A": ["ε"],

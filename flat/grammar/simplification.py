@@ -6,7 +6,6 @@ This module provides functions to simplify context-free grammars by:
 - Eliminating epsilon productions
 - Eliminating unit productions
 """
-from os import terminal_size
 
 from .grammar import Grammar
 
@@ -21,6 +20,8 @@ def remove_non_generating_symbols(grammar: Grammar) -> Grammar:
     Returns:
         Grammar: A new grammar without non-generating symbols.
     """
+
+    # TODO: Refactor the code - this has vibe coded as a bandaid fix
 
     # Set of generating non-terminals
     generating = set()
@@ -121,7 +122,7 @@ def remove_unreachable_symbols(grammar: Grammar) -> Grammar:
 
 def inline_nonterminals_generating_only_terminals(grammar: Grammar) -> Grammar:
     """
-    Replace nonterminals that produce only terminal strings by their productions
+    Replace non-terminals that produce only terminal strings by their productions
     in all other productions.
 
     Args:
@@ -130,6 +131,10 @@ def inline_nonterminals_generating_only_terminals(grammar: Grammar) -> Grammar:
     Returns:
         Grammar: A new grammar with inlined terminal-only nonterminals.
     """
+
+    #TODO: Refactor the code - this has vibe coded as a bandaid fix
+    # - when replacing the non-terminals a few more words that could not be formed before appear
+
     # Step 1: Find nonterminals that produce only terminals (or epsilon)
     terminal_only_nts = set()
     
@@ -463,9 +468,9 @@ def simplify_grammar(grammar: Grammar) -> Grammar:
     grammar = eliminate_unit_productions(grammar)
 
     grammar = remove_unreachable_symbols(grammar)
-    grammar = inline_nonterminals_generating_only_terminals(grammar)
+    # grammar = inline_nonterminals_generating_only_terminals(grammar)
     grammar = merge_nonterminals_with_same_productions(grammar)
-    grammar = inline_nonterminals_generating_only_terminals(grammar)
+    # grammar = inline_nonterminals_generating_only_terminals(grammar)
     grammar = remove_unreachable_symbols(grammar)
 
     grammar = eliminate_epsilon_productions(grammar)
@@ -473,9 +478,9 @@ def simplify_grammar(grammar: Grammar) -> Grammar:
     grammar = eliminate_unit_productions(grammar)
 
     grammar = remove_unreachable_symbols(grammar)
-    grammar = inline_nonterminals_generating_only_terminals(grammar)
+    # grammar = inline_nonterminals_generating_only_terminals(grammar)
     grammar = merge_nonterminals_with_same_productions(grammar)
-    grammar = inline_nonterminals_generating_only_terminals(grammar)
+    # grammar = inline_nonterminals_generating_only_terminals(grammar)
     grammar = remove_unreachable_symbols(grammar)
 
     return grammar

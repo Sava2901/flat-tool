@@ -7,115 +7,117 @@ A grammar is in CNF if all productions are of the form:
 - S → ε (only if S is the start symbol)
 """
 
-from copy import deepcopy
+import itertools
 
 from .grammar import Grammar
-from .simplification import simplify_grammar
-
 
 def convert_to_cnf(grammar: Grammar) -> Grammar:
     """Convert a context-free grammar to Chomsky Normal Form.
-    
-    The conversion process follows these steps:
-    1. Simplify the grammar (remove non-generating symbols, unreachable symbols,
-       epsilon productions, and unit productions)
-    2. Convert terminal-mixed productions to use new non-terminals
-    3. Convert long productions to binary productions
-    
-    Args:
-        grammar: The grammar to convert.
-        
-    Returns:
-        Grammar: A new grammar in Chomsky Normal Form.
     """
-    # Step 1: Simplify the grammar
-    grammar = simplify_grammar(grammar)
-    
-    # Make a deep copy to avoid modifying the original grammar
-    new_grammar = deepcopy(grammar)
-    new_non_terminals = set(grammar.non_terminals)
-    new_productions = deepcopy(grammar.productions)
-    
-    # Step 2: Convert terminal-mixed productions
-    terminal_map = {}  # Maps terminals to their corresponding non-terminals
-    
-    for nt, productions in grammar.productions.items():
-        new_prods = []
-        for prod in productions:
-            # Skip productions that are already in CNF
-            if len(prod) == 1 and prod in grammar.terminals:
-                new_prods.append(prod)
-                continue
-                
-            if len(prod) >= 2:
-                new_prod = ""
-                for symbol in prod:
-                    if symbol in grammar.terminals:
-                        # Create a new non-terminal for this terminal if needed
-                        if symbol not in terminal_map:
-                            new_nt = f"T_{symbol}"
-                            while new_nt in new_non_terminals:
-                                new_nt += "'"
-                            terminal_map[symbol] = new_nt
-                            new_non_terminals.add(new_nt)
-                            new_productions[new_nt] = [symbol]
-                        
-                        # Use the new non-terminal instead of the terminal
-                        new_prod += terminal_map[symbol]
-                    else:
-                        new_prod += symbol
-                new_prods.append(new_prod)
-            else:
-                new_prods.append(prod)
-        
-        new_productions[nt] = new_prods
-    
-    # Step 3: Convert long productions to binary productions
-    for nt, productions in list(new_productions.items()):
-        new_prods = []
-        for prod in productions:
-            if len(prod) <= 2:
-                new_prods.append(prod)
-            else:
-                # Create a series of new non-terminals for this long production
-                current_nt = nt
-                for i in range(len(prod) - 2):
-                    next_symbol = prod[i]
-                    rest = prod[i+1:]
-                    
-                    # Create a new non-terminal for the rest of the production
-                    new_nt = f"{current_nt}_{i+1}"
-                    while new_nt in new_non_terminals:
-                        new_nt += "'"
-                    
-                    # Add the new non-terminal and its production
-                    new_non_terminals.add(new_nt)
-                    
-                    # Add the binary production for the current non-terminal
-                    if current_nt == nt and i == 0:
-                        new_prods.append(next_symbol + new_nt)
-                    else:
-                        if current_nt not in new_productions:
-                            new_productions[current_nt] = []
-                        new_productions[current_nt].append(next_symbol + new_nt)
-                    
-                    current_nt = new_nt
-                
-                # Add the final binary production
-                if current_nt not in new_productions:
-                    new_productions[current_nt] = []
-                new_productions[current_nt].append(prod[-2] + prod[-1])
-        
-        if nt in new_productions:  # Check if the key exists (it might have been removed)
-            new_productions[nt] = new_prods
-    
-    return Grammar(
-        non_terminals=new_non_terminals,
+
+    def _replace(text, replacement_map):
+        for key, value in replacement_map.items():
+            text = text.replace(key, value)
+        return text
+
+    def _tokenise(text, terminals, non_terminals):
+        out = []
+        i = 0
+        sorted_non_terminals = sorted(non_terminals, key=len, reverse=True)
+        while i < len(text):
+            matched = False
+            for nt in sorted_non_terminals:
+                if text.startswith(nt, i):
+                    out.append(nt)
+                    i += len(nt)
+                    matched = True
+                    break
+            if not matched:
+                if text[i] in terminals:
+                    out.append(text[i])
+                i += 1
+        return out
+
+    # Step 1: Simplify the grammar (remove ε-productions, unit productions, unreachable symbols)
+    grammar = grammar.simplify()
+
+    # Step 2: Rename all non-terminals to X{number} using exact string replacement
+    rename_map = dict()
+    counter = itertools.count(1)
+
+    rename_map[grammar.start_symbol] = f"X{next(counter)}"
+
+    for nt in sorted(grammar.non_terminals):
+        if nt not in rename_map:
+            rename_map[nt] = f"X{next(counter)}"
+
+    new_start_symbol = rename_map[grammar.start_symbol]
+    renamed_productions = dict()
+
+    for lhs, rhs in grammar.productions.items():
+        new_lhs = _replace(lhs, rename_map)
+        new_rhs = [_replace(rep, rename_map) for rep in rhs]
+        renamed_productions[new_lhs] = new_rhs
+
+    grammar = Grammar(
+        non_terminals=set(rename_map.values()),
         terminals=grammar.terminals,
-        productions=new_productions,
-        start_symbol=grammar.start_symbol
+        productions=dict(renamed_productions),
+        start_symbol=new_start_symbol
     )
 
+    # Step 3: Transform to CNF
+    new_productions = dict()
+    rename_map = dict()
+    token_binaries = dict()
+
+    for lhs, rhs in grammar.productions.items():
+        for p in rhs:
+            tokens = _tokenise(p, grammar.terminals, grammar.non_terminals)
+
+            # Case: already CNF compliant
+            if len(tokens) == 1 or (
+                    len(tokens) == 2 and tokens[0] in grammar.non_terminals and tokens[1] in grammar.non_terminals):
+                if lhs not in new_productions:
+                    new_productions[lhs] = [p]
+                else:
+                    new_productions[lhs].append(p)
+                continue
+
+            # Replace terminals with new non-terminals
+            for token in tokens:
+                if token in grammar.terminals:
+                    if token not in rename_map:
+                        new_nt = f"X{next(counter)}"
+                        grammar.non_terminals.add(new_nt)
+                        rename_map[token] = new_nt
+                        new_productions[new_nt] = [token]
+            tokens = [_replace(token, rename_map) for token in tokens]
+
+            # Collapse into CNF by creating binary rules
+            while len(tokens) > 2:
+                pair = ''.join(tokens[:2])
+                if pair not in token_binaries:
+                    new_nt = f"X{next(counter)}"
+                    grammar.non_terminals.add(new_nt)
+                    token_binaries[pair] = new_nt
+                    new_productions[new_nt] = [tokens[0]+tokens[1]]
+                tokens = [token_binaries[pair]] + tokens[2:]
+
+            # Add final rule to new_productions
+            if lhs not in new_productions:
+                new_productions[lhs] = [''.join(tokens)]
+            else:
+                new_productions[lhs].append(''.join(tokens))
+
+    grammar = Grammar(
+        non_terminals=grammar.non_terminals,
+        terminals=grammar.terminals,
+        productions=new_productions,
+        start_symbol=new_start_symbol
+    )
+
+    return grammar
 
 def is_in_cnf(grammar: Grammar) -> bool:
     """Check if a grammar is in Chomsky Normal Form.
