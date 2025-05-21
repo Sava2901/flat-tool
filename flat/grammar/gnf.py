@@ -173,7 +173,7 @@ def convert_to_gnf(grammar):
         terminals=terms,
         productions=final_productions,
         start_symbol=start_symbol
-    )
+    ).remove_unreachable_symbols()
 
 
 def is_in_gnf(grammar):

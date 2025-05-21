@@ -74,6 +74,25 @@ def remove_unreachable_symbols(grammar: Grammar) -> Grammar:
         Grammar: A new grammar without unreachable symbols.
     """
     from collections import deque
+    import re
+
+    def _tokenise(text, terminals, non_terminals):
+        out = []
+        i = 0
+        sorted_non_terminals = sorted(non_terminals, key=len, reverse=True)
+        while i < len(text):
+            matched = False
+            for nt in sorted_non_terminals:
+                if text.startswith(nt, i):
+                    out.append(nt)
+                    i += len(nt)
+                    matched = True
+                    break
+            if not matched:
+                if text[i] in terminals:
+                    out.append(text[i])
+                i += 1
+        return out
 
     reachable = set()
     queue = deque([grammar.start_symbol])
@@ -83,7 +102,8 @@ def remove_unreachable_symbols(grammar: Grammar) -> Grammar:
         if current not in reachable:
             reachable.add(current)
             for production in grammar.productions.get(current, []):
-                for symbol in production:
+                tokens = _tokenise(production, grammar.terminals, grammar.non_terminals)
+                for symbol in tokens:
                     if symbol in grammar.non_terminals and symbol not in reachable:
                         queue.append(symbol)
 
@@ -103,7 +123,8 @@ def remove_unreachable_symbols(grammar: Grammar) -> Grammar:
     new_terminals = set()
     for prods in new_productions.values():
         for prod in prods:
-            for symbol in prod:
+            tokens = _tokenise(prod, grammar.terminals, grammar.non_terminals)
+            for symbol in tokens:
                 if symbol in grammar.terminals:
                     new_terminals.add(symbol)
 
