@@ -1,6 +1,7 @@
 from flat.grammar.grammar import Grammar
+from flat.grammar.cyk import is_word_in_grammar
 
-def run_grammar_test(title, non_terminals, terminals, productions, start_symbol):
+def run_grammar_test(title, non_terminals, terminals, productions, start_symbol, test_words=None):
     print(f"\n{'=' * 60}")
     print(f"{title}")
     print(f"{'=' * 60}")
@@ -49,6 +50,14 @@ def run_grammar_test(title, non_terminals, terminals, productions, start_symbol)
         cnf_grammar = grammar.to_cnf()
         print("\nCNF Grammar:")
         print(cnf_grammar)
+        
+        # Test words with CYK if provided
+        if test_words:
+            print("\nCYK Tests:")
+            for word in test_words:
+                print(f"\nTesting word: {word}")
+                result = is_word_in_grammar(grammar, word, show_table=True)
+                print(f"Result: {'Accepted' if result else 'Rejected'}")
     except NotImplementedError:
         print("cnf: Not good man, not good.")
 
@@ -69,7 +78,8 @@ def main():
             "S": ["ε", "A", "bA"],
             "A": ["aA", "a"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a", "aa", "aaa", "b", "ba", "baa"]
     )
 
     # Grammar 2: More complex CFG with ε and unit productions
@@ -82,7 +92,8 @@ def main():
             "B": ["b", "ε"],
             "C": ["c", "B"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "b", "c", "bc", "bb", "cc"]
     )
 
     # Grammar 3: Unit chains and epsilon
@@ -96,7 +107,8 @@ def main():
             "B": ["C"],
             "C": ["x", "ε"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "x"]
     )
 
     # Grammar 4: CFG with multiple nullable symbols
@@ -109,7 +121,8 @@ def main():
             "A": ["a", "ε"],
             "B": ["b", "ε"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a", "b", "ab"]
     )
 
     # Grammar 5: Right-linear grammar with ε and unit productions
@@ -121,7 +134,8 @@ def main():
             "S": ["aA", "bS", "ε"],
             "A": ["S"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a", "b", "ab", "ba", "aba"]
     )
 
     # Grammar 6: Left-recursive CFG with nullable non-terminal
@@ -133,7 +147,8 @@ def main():
             "S": ["AS", "x"],
             "A": ["ε"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["x", "xx", "xxx"]
     )
 
     # Grammar 7: Mixed unit and nullable across several paths
@@ -147,7 +162,8 @@ def main():
             "B": ["C"],
             "C": ["a", "b"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a", "b"]
     )
 
     # Grammar 8: Unit production pointing to epsilon rule
@@ -159,7 +175,8 @@ def main():
             "S": ["A"],
             "A": ["ε"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a"]
     )
 
     # Grammar 9: Simple CFG no terminals, only unit + epsilon
@@ -173,7 +190,8 @@ def main():
             "B": ["ε", "A", "aA", "aaAbb", "bbb"],
             "C": ["abc"],
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "abc", "aaa", "bbb", "aaabb"]
     )
 
     # Grammar 10: CFG with nested nullable chains
@@ -186,7 +204,8 @@ def main():
             "A": ["B"],
             "B": ["ε", "a"]
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["", "a"]
     )
 
     # G = ({S, X, A, B}, {a, b}, {S → XA | BB, B → b | SB, X → b, A → a})
@@ -200,7 +219,8 @@ def main():
             "B": ["b", "SB"],
             "C": ["b"],
         },
-        start_symbol="S"
+        start_symbol="S",
+        test_words=["ba", "bb", "bbb", "bbba"]
     )
 
 
